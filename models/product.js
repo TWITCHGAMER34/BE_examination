@@ -21,7 +21,15 @@ const productSchema = new Schema({
     price : {
         type : Number,
         required : true
-    } 
+    },
+    created_at : {
+        type : Date,
+        default : Date.now
+    },
+    modified_at : {
+        type : Date,
+        default : undefined
+    }
 });
 
 const Product = mongoose.model('Product', productSchema);

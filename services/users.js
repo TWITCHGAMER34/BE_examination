@@ -1,22 +1,25 @@
-import User from '../models/user.js';
+import User from '../models/User.js';
+import bcrypt from 'bcrypt';
 
-export async function registerUser(user) {
+export async function registerUser({ username, password, role, userId }) {
     try {
-        const result = await User.create(user);
-        return result;
-    } catch(error) {
-        console.log(error.message);
+        const existing = await User.findOne({ username });
+        if (existing) return null; // username taken
+
+        const hashed = await bcrypt.hash(password, 10);
+        const user = await User.create({
+            username,
+            password: hashed,
+            role,
+            userId
+        });
+        return user;
+    } catch (err) {
+        console.error('registerUser error:', err);
         return null;
     }
 }
 
 export async function getUser(username) {
-    try {
-        const user = await User.findOne({ username : username});
-        if(user) return user;
-        else throw new Error('No user found');
-    } catch(error) {
-        console.log(error.message);
-        return null;
-    }
-} 
+    return await User.findOne({ username }).lean();
+}

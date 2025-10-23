@@ -33,3 +33,17 @@ export function validateOrderBody(req, res, next) {
         });
     }
 }
+
+export default function validateProduct(req, res, next) {
+    const { title, desc, price } = req.body;
+    if (!title || typeof title !== 'string') {
+        return next({ status: 400, message: 'Invalid or missing "title"' });
+    }
+    if (!desc || typeof desc !== 'string') {
+        return next({ status: 400, message: 'Invalid or missing "desc"' });
+    }
+    if (price === undefined || typeof price !== 'number' || Number.isNaN(price) || price < 0) {
+        return next({ status: 400, message: 'Invalid or missing "price" (must be a non-negative number)' });
+    }
+    next();
+}
