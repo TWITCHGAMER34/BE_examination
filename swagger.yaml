@@ -1,0 +1,421 @@
+openapi: 3.0.3
+info:
+  title: BE_examination API
+  version: 1.0.0
+  description: >
+    Documentation for authentication endpoints and admin menu endpoints.
+    Admin endpoints require authentication (session cookie `sid` or `Authorization: Bearer <token>`)
+    and admin privileges.
+servers:
+  - url: http://localhost:5000
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sid
+      description: Session cookie set on login.
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >
+        Use `Authorization: Bearer <token>` header.
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+      required:
+        - success
+        - message
+    AuthRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          example: demo_user
+        password:
+          type: string
+          example: password123
+      required:
+        - username
+        - password
+    AuthSuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        user:
+          type: object
+          properties:
+            username:
+              type: string
+              example: demo_user
+            role:
+              type: string
+              example: admin
+            userId:
+              type: string
+              example: user-abc12
+    RegisterResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: New user registered successfully
+    Product:
+      type: object
+      properties:
+        prodId:
+          type: string
+          example: prod-1a2b3c
+        title:
+          type: string
+          example: Pizza Margherita
+        desc:
+          type: string
+          example: Classic pizza with tomato and mozzarella
+        price:
+          type: number
+          format: float
+          example: 9.5
+        created_at:
+          type: string
+          format: date-time
+          example: '2025-10-01T12:00:00Z'
+        modified_at:
+          type: string
+          format: date-time
+          example: '2025-10-02T14:00:00Z'
+    AddProductRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          example: Pizza Margherita
+        desc:
+          type: string
+          example: Classic pizza with tomato and mozzarella (min 10 chars)
+        price:
+          type: number
+          format: float
+          example: 9.5
+      required:
+        - title
+        - desc
+        - price
+
+paths:
+  /api/auth/register:
+    post:
+      summary: Register new user
+      description: Create a new user. Requires `username` and `password` in the request body.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRequest'
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterResponse'
+              example:
+                success: true
+                message: New user registered successfully
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: BOTH username AND password are required
+
+  /api/auth/login:
+    post:
+      summary: Login
+      description: Authenticate user. Sets session cookie `sid` or returns user info and token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSuccessResponse'
+              example:
+                success: true
+                user:
+                  username: demo_user
+                  role: admin
+                  userId: user-abc12
+        '400':
+          description: Validation error (missing body)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: BOTH username AND password are required
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: Invalid username or password
+
+  /api/auth/logout:
+    get:
+      summary: Logout
+      description: End session. Requires authentication.
+      security:
+        - cookieAuth: [ ]
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: User logged out successfully
+        '400':
+          description: No active session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: No user is currently logged in
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: Authentication required
+
+  /api/menu/add-item:
+    post:
+      summary: Add menu item (admin)
+      description: >
+        Create a new menu product. Admin privileges required.
+        Authenticate with cookie `sid` or `Authorization: Bearer <token>`.
+      security:
+        - cookieAuth: [ ]
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddProductRequest'
+      responses:
+        '201':
+          description: Item created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  item:
+                    $ref: '#/components/schemas/Product'
+              example:
+                success: true
+                item:
+                  prodId: prod-1a2b3c
+                  title: Pizza Margherita
+                  desc: Classic pizza with tomato and mozzarella
+                  price: 9.5
+                  created_at: '2025-10-01T12:00:00Z'
+                  modified_at: '2025-10-01T12:00:00Z'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: Invalid or missing "title"
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: Authentication required
+        '403':
+          description: Not an admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: Admin privileges required
+
+  /api/menu/{id}:
+    parameters:
+      - name: id
+        in: path
+        description: Product `prodId` (e.g. prod-1a2b3c)
+        required: true
+        schema:
+          type: string
+    patch:
+      summary: Update menu item (admin)
+      description: Update title, description and price for a product. Admin and authentication required.
+      security:
+        - cookieAuth: [ ]
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddProductRequest'
+      responses:
+        '200':
+          description: Item updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  item:
+                    $ref: '#/components/schemas/Product'
+              example:
+                success: true
+                item:
+                  prodId: prod-1a2b3c
+                  title: Pizza Margherita (Updated)
+                  desc: Updated description with at least 10 chars
+                  price: 10.0
+                  created_at: '2025-10-01T12:00:00Z'
+                  modified_at: '2025-10-02T14:00:00Z'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: Invalid or missing "price" (must be non-negative)
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: Authentication required
+        '403':
+          description: Not an admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: Admin privileges required
+        '404':
+          description: Item not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: Item not found
+    delete:
+      summary: Delete menu item (admin)
+      description: Delete a product by its `prodId`. Admin and authentication required.
+      security:
+        - cookieAuth: [ ]
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Item deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Item deleted successfully
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: Authentication required
+        '403':
+          description: Not an admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: Admin privileges required
+        '404':
+          description: Item not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: Item not found
+
+security: [ ]
